@@ -9,49 +9,28 @@ class PokemonProxy
   end
 
   def get_pokemon(pokemon_name:)
-    return pokemon_response("on_cache", cache.read("pokemon_cached/#{pokemon_name}")) if cache.exist?("pokemon_cached/#{pokemon_name}")
+    cache_key = "pokemon_cached/#{pokemon_name}"
+
+    return response_pokemon("on_cache", cache.read(cache_key), "success") if cache.exist?(cache_key)
 
     response = client.get_pokemon(pokemon_name:)
-    if response.status == 200
-      response.body["consulted_at"] = consulted_at
-      cache.write("pokemon_cached/#{pokemon_name}", response, expires_in: EXPIRATION)
-      pokemon_response("client_call", response)
-    else
-      pokemon_error_response(response)
-    end
+
+    handle_pokemon_reponse(response, pokemon_name:)
   end
 
   private
 
-  def consulted_at
-    Time.now.utc.strftime("%FT%T")
+  def handle_pokemon_reponse(response, pokemon_name:)
+    return response_pokemon("client_call", response, "failed") unless response.status == 200
+
+    response.body["consulted_at"] = Time.now.utc.strftime("%FT%T")
+    cache.write(
+      "pokemon_cached/#{pokemon_name}", response, expires_in: EXPIRATION
+    )
+    response_pokemon("client_call", response, "success")
   end
 
-  def pokemon_response(origin, response)
-    {
-      'origin': origin,
-      'name': response.body["name"],
-      'weight': response.body["weight"],
-      'types': type(response.body["types"]),
-      'stats': stats(response.body["stats"]),
-      'consulted_at': response.body["consulted_at"]
-    }
-  end
-
-  def stats(stats)
-    stats.each_with_object([]) do |stat, array|
-      array << "#{stat.dig('stat', 'name')}: #{stat['base_stat']}"
-    end
-  end
-
-  def type(types)
-    types.map { |type| type.dig("type", "name") }
-  end
-
-  def pokemon_error_response(response)
-    {
-      'error': response.body,
-      'status': response.status
-    }
+  def response_pokemon(origin, response, type)
+    FactoryResponse.create_response(origin: origin, response:, type: type)
   end
 end

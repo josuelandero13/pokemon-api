@@ -1,15 +1,9 @@
-class GetPokemonService
+class PokemonService
   attr_reader :pokemon_name
 
   def initialize(pokemon_name:)
     @pokemon_name = pokemon_name
   end
-
-  def call
-    get_pokemon
-  end
-
-  private
 
   def get_pokemon
     client = PokemonConnection.new

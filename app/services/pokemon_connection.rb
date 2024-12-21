@@ -11,7 +11,7 @@ class PokemonConnection
   end
 
   def get_pokemon(pokemon_name:)
-    response = client.get("pokemon/#{pokemon_name}")
+    client.get("pokemon/#{pokemon_name}")
   rescue Faraday::Error => e
     { "error" => e }
   end
